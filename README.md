@@ -16,4 +16,6 @@ will become the 'What was I thinking' phase.
 
 ## Initial Thoughts
 Initially I am using the [snappy] compression algorithm and the encryption
-method has not been decided at this time.  
+method has not been decided at this time. 
+
+[snappy] https://code.google.com/p/snappy/ 
