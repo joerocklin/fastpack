@@ -1,94 +1,53 @@
 package main
 
 import (
-  "bufio"
-  "github.com/mreiferson/go-snappystream"
-  "crypto/sha256"
   "flag"
-  "fmt"
-  "io"
   "log"
   "os"
-  "time"
-)
+) 
 
-//type encryption_type 
+var flag_help bool
+var flag_list bool
+var flag_add bool
 
-type filenode struct {
-  name string
-  path string
-  size int64
- 
-  mode os.FileMode
-  isdir bool
-  modification_time time.Time
-  uid uint16
-  gid uint16
-
-  checksum [sha256.Size]byte
-}
-
-var help bool
-var outfile string
-var infiles []string
+var archive_filename string
+var files []string
 var logger = log.New(os.Stderr, "fastpack", log.Flags())
+var tempdir string
 
 func init() {
-  flag.BoolVar(&help, "h", false, "help")
+  flag.BoolVar(&flag_help, "h", false, "help")
+  flag.BoolVar(&flag_list, "l", false, "List the archive contents")
+  flag.BoolVar(&flag_add, "a", false, "Add one or more files to the archive")
   flag.Parse()
 
   args := flag.Args()
   
-  if len(args) > 1 { 
-    outfile = args[0]
-    infiles = args[1:]
-  } else {
-    help = true
-  }
-}
-
-func process_infile(index int, filename string) {
-  infile, err := os.Open(filename)
-  if err != nil { log.Fatal(err) }
-  defer infile.Close()
-
-  outfile, err := os.Create(fmt.Sprintf("%s.snap", filename))
-  if err != nil { log.Fatal(err) }
-  defer outfile.Close()
-
-  reader := bufio.NewReader(infile)
-  writer := bufio.NewWriter(outfile)
-  snappyWriter := snappystream.NewWriter(writer)
-
-  checksum := sha256.New()
-
-  buf := make([]byte, 1024)
-  for {
-    read_count, err := reader.Read(buf)
-    if err != nil && err != io.EOF { log.Fatal(err) }
-    if read_count == 0 { break }
-
-    checksum.Write(buf[:read_count])
-    if _, err := snappyWriter.Write(buf[:read_count]); err != nil {
-      log.Fatal(err)
-    }
-
+  if len(args) > 0 { 
+    archive_filename = args[0]
   }
 
-  if err = writer.Flush(); err != nil { log.Fatal(err) }
+  if len(args) > 1 {
+    files = args[1:]
+  } 
 
-  log.Println(checksum.Sum(nil))
+  if len(files) == 0 && flag_add {
+    flag_help = true
+  }
 }
 
 func main() {
-  if help {
+  if flag_help {
     flag.Usage()
     return;
   }
 
-  log.Println("Writing output to", outfile)
+  if flag_add { 
+    log.Println("Adding files")
+    cmd_add_files(archive_filename, files) 
+  } else if flag_list {
+    log.Println("Listing archive")
+    cmd_list_files(archive_filename)
+  } 
 
-  for index, element := range infiles {
-    process_infile(index, element)
-  }
 }
