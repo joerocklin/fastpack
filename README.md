@@ -18,4 +18,4 @@ will become the 'What was I thinking' phase.
 Initially I am using the [snappy] compression algorithm and the encryption
 method has not been decided at this time. 
 
-[snappy] https://code.google.com/p/snappy/ 
+[snappy]: https://code.google.com/p/snappy/ 
