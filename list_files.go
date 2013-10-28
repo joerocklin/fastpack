@@ -1,7 +1,7 @@
 package main
 
 import (
-	"bufio"
+	//"bufio"
 	"encoding/gob"
 	"fmt"
 	"log"
@@ -17,20 +17,44 @@ func cmd_list_files(archive_filename string) error {
 	defer archive.Close()
 
 	// Create the read buffer
-	reader := bufio.NewReader(archive)
+	//reader := bufio.NewReader(archive)
 
-	// Create the gob decoder
-	dec := gob.NewDecoder(reader)
-
-	var headers []Filenode
-	err = dec.Decode(&headers)
-	if err != nil {
-		return err
-	}
+	headers, err := getFileIndex(archive)
 
 	for _, file := range headers {
-		fmt.Printf("%d     %s/%s\n", file.Size, file.Path, file.Name)
+		fmt.Printf("%d    %d     %s/%s\n", file.Offset, file.Size, file.Path, file.Name)
 	}
 
 	return nil
+}
+
+func getFileIndex(archive *os.File) ([]Fileindex, error) {
+	// Store the current file position
+	curpos, _ := archive.Seek(0, os.SEEK_CUR)
+
+	// Seek to the end of the file, and read in the value which tells us where
+	// the start of the index is located
+	archive.Seek(-indexOffsetSize, os.SEEK_END)
+
+	offset_bytes := make([]byte, indexOffsetSize)
+	_, err := archive.Read(offset_bytes)
+	offset := BytesToInt(offset_bytes)
+
+	log.Printf("Index offset located at %d bytes from end", offset)
+
+	archive.Seek(-(indexOffsetSize + offset), os.SEEK_END)
+
+	// Create the gob decoder
+	dec := gob.NewDecoder(archive)
+
+	var headers []Fileindex
+	err = dec.Decode(&headers)
+	if err != nil {
+		return nil, err
+	}
+
+	// restore the original file position
+	archive.Seek(curpos, os.SEEK_SET)
+
+	return headers, nil
 }
