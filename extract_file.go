@@ -4,10 +4,9 @@ import (
 	"bufio"
 	"bytes"
 	"crypto/sha256"
-	"encoding/gob"
-	//	"github.com/mreiferson/go-snappystream"
-	//  "errors"
-	//  "fmt"
+	"github.com/mreiferson/go-snappystream"
+	"errors"
+	"fmt"
 	"io"
 	"log"
 	"os"
@@ -20,9 +19,6 @@ func cmd_extract_files(archive_filename string, files []string) error {
 		log.Fatal(err)
 	}
 	defer archive.Close()
-
-	// Create the read buffer
-	//reader := bufio.NewReader(archive)
 
 	headers, err := getFileIndex(archive)
 	if err != nil {
@@ -48,11 +44,6 @@ func process_outfile(archive_filename string, index Fileindex) error {
 		log.Fatal(err)
 	}
 	defer archive.Close()
-	file_reader := io.LimitReader(archive, 100)
-
-	// Build our decoder
-	dec := gob.NewDecoder(file_reader)
-	var file_header Fileindex
 
 	// Seek to the start of this file
 	log.Printf("Seeking to %x", index.Offset)
@@ -61,24 +52,13 @@ func process_outfile(archive_filename string, index Fileindex) error {
 		return err
 	}
 
-	// Read in the header
-	err = dec.Decode(&file_header)
-	if err != nil {
-		return err
-	}
-
-	log.Printf("%+v", file_header)
-	pos, _ := archive.Seek(0, os.SEEK_CUR)
-	log.Printf("Current pos: %x", pos)
-
 	log.Printf("Limiting reads to %d", index.Size)
-	//file_reader := io.LimitReader(archive, index.Size)
-	file_reader = archive
-	//snappyReader := snappystream.NewReader(file_reader, snappystream.VerifyChecksum)
-	reader := file_reader
+	file_reader := io.LimitReader(archive, index.Size)
+	snappyReader := snappystream.NewReader(file_reader, snappystream.VerifyChecksum)
+	reader := snappyReader
 
 	// Create the outfile
-	outfile, err := os.Create(file_header.Name)
+	outfile, err := os.Create(index.Name)
 	if err != nil {
 		return err
 	}
@@ -118,10 +98,10 @@ func process_outfile(archive_filename string, index Fileindex) error {
 		log.Fatal(err)
 	}
 
-	if !bytes.Equal(file_header.Checksum, checksum.Sum(nil)) {
+	if !bytes.Equal(index.Checksum, checksum.Sum(nil)) {
 		log.Printf("     Got: %+v", checksum.Sum(nil))
-		log.Printf("Expected: %+v", file_header.Checksum)
-		//return errors.New(fmt.Sprintf("Checksum mismatch for file %s/%s", file_header.Path, file_header.Name))
+		log.Printf("Expected: %+v", index.Checksum)
+		return errors.New(fmt.Sprintf("Checksum mismatch for file %s/%s", index.Path, index.Name))
 	}
 
 	return nil

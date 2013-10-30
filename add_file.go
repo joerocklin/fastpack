@@ -36,27 +36,29 @@ func cmd_add_files(archive_filename string, infiles []string) error {
 		tempfile, file_header := process_infile(element)
 		defer tempfile.Close()
 
+		tempfile.Seek(0, os.SEEK_SET)
+
 		var file_index Fileindex
 		file_index.Name = file_header.Name
 		file_index.Path = file_header.Path
-		file_index.Offset, err = archive.Seek(0, os.SEEK_CUR)
-		if err != nil {
-			return err
-		}
 		file_stat, err := tempfile.Stat()
 		if err != nil {
 			return err
 		}
 		file_index.Size = file_stat.Size()
-		archive_index = append(archive_index, file_index)
+
+		file_index.Offset, err = archive.Seek(0, os.SEEK_CUR)
+		if err != nil {
+			return err
+		}
 
 		log.Printf("Adding %s", element)
 
 		// Create the read buffer
-		reader := bufio.NewReader(tempfile)
+		reader := io.Reader(tempfile)
 
 		// Chain the output buffers
-		writer := bufio.NewWriter(archive)
+		writer := io.Writer(archive)
 
 		buf := make([]byte, 1024)
 		for {
@@ -72,15 +74,18 @@ func cmd_add_files(archive_filename string, infiles []string) error {
 			}
 
 			// And write the buffer to the output stream
-			if _, err := writer.Write(buf[:read_count]); err != nil {
+			_, err = writer.Write(buf[:read_count])
+			if err != nil {
 				return err
 			}
 		}
 
-		// Flush anything left in the final chain of the output writer
-		if err = writer.Flush(); err != nil {
-			log.Fatal(err)
-		}
+		// // Flush anything left in the final chain of the output writer
+		// if err = writer.Flush(); err != nil {
+		// 	log.Fatal(err)
+		// }
+		log.Printf("%+v", file_index)
+		archive_index = append(archive_index, file_index)
 	}
 
 	archive.Write(IntToBytes(fastpackIndexMagicv1))
@@ -169,6 +174,7 @@ func process_infile(filename string) (*os.File, Fileindex) {
 	}
 
 	file_header.Checksum = checksum.Sum(nil)
+	log.Printf("%+v", file_header)
 
 	return tempfile, file_header
 }
