@@ -10,6 +10,9 @@ const fastpackIndexMagicv1 = 0x667061636b303031
 
 const indexOffsetSize = binary.MaxVarintLen64
 
+const indexVersionMajor uint16 = 0
+const indexVersionMinor uint16 = 1
+
 type Fileindex struct {
 	Name        string
 	Path        string

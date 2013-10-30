@@ -52,7 +52,7 @@ func process_outfile(archive_filename string, index Fileindex) error {
 		return err
 	}
 
-	log.Printf("Limiting reads to %d", index.Size)
+	log.Printf("Limiting reads to %x", index.Size)
 	file_reader := io.LimitReader(archive, index.Size)
 	snappyReader := snappystream.NewReader(file_reader, snappystream.VerifyChecksum)
 	reader := snappyReader
@@ -77,10 +77,9 @@ func process_outfile(archive_filename string, index Fileindex) error {
 			log.Println("Error reading")
 			return err
 		}
-		log.Printf("Read %d bytes from stream", read_count)
+		
 		// If the returned size is zero, we're at the end of the file
 		if read_count == 0 {
-			log.Println(err)
 			break
 		}
 
@@ -103,6 +102,8 @@ func process_outfile(archive_filename string, index Fileindex) error {
 		log.Printf("Expected: %+v", index.Checksum)
 		return errors.New(fmt.Sprintf("Checksum mismatch for file %s/%s", index.Path, index.Name))
 	}
+
+	// TODO Set file attributes/timestamps
 
 	return nil
 }

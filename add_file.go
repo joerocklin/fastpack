@@ -21,6 +21,7 @@ func cmd_add_files(archive_filename string, infiles []string) error {
 	}
 	defer os.RemoveAll(tempdir)
 
+
 	//Open the output file
 	archive, err := os.Create(archive_filename)
 	if err != nil {
@@ -33,14 +34,10 @@ func cmd_add_files(archive_filename string, infiles []string) error {
 
 	// Time to rip through the files
 	for _, element := range infiles {
-		tempfile, file_header := process_infile(element)
+		tempfile, file_index := process_infile(element)
 		defer tempfile.Close()
 
 		tempfile.Seek(0, os.SEEK_SET)
-
-		var file_index Fileindex
-		file_index.Name = file_header.Name
-		file_index.Path = file_header.Path
 		file_stat, err := tempfile.Stat()
 		if err != nil {
 			return err
@@ -51,8 +48,6 @@ func cmd_add_files(archive_filename string, infiles []string) error {
 		if err != nil {
 			return err
 		}
-
-		log.Printf("Adding %s", element)
 
 		// Create the read buffer
 		reader := io.Reader(tempfile)
@@ -114,7 +109,14 @@ func process_infile(filename string) (*os.File, Fileindex) {
 	file_header.Name = filepath.Base(filename)
 	file_header.Path = filepath.Dir(filename)
 
-	file_stat, err := os.Stat(filename)
+	// Open our input file
+	infile, err := os.Open(filename)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer infile.Close()
+
+  file_stat, err := infile.Stat()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -123,12 +125,6 @@ func process_infile(filename string) (*os.File, Fileindex) {
 	file_header.ModTime = file_stat.ModTime()
 	file_header.Isdir = file_stat.IsDir()
 
-	// Open our input file
-	infile, err := os.Open(filename)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer infile.Close()
 
 	// Create the tempfile
 	tempfile, err := ioutil.TempFile(tempdir, file_header.Name)
@@ -174,7 +170,7 @@ func process_infile(filename string) (*os.File, Fileindex) {
 	}
 
 	file_header.Checksum = checksum.Sum(nil)
-	log.Printf("%+v", file_header)
+//	log.Printf("%+v", file_header)
 
 	return tempfile, file_header
 }

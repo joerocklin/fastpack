@@ -21,9 +21,9 @@ func cmd_list_files(archive_filename string) error {
 
 	headers, err := getFileIndex(archive)
 
-  fmt.Printf("%-8s %-16s %s\n", "offset", "Size (bytes)", "Path/File")
+  fmt.Printf("%-8s %-24s %-24s %s\n", "offset", "Packed Size (bytes)", "Real Size (bytes)", "Path/File")
 	for _, file := range headers {
-		fmt.Printf("%-8d %-16d %s/%s\n", file.Offset, file.Size, file.Path, file.Name)
+		fmt.Printf("%-8d %-24d %-24d %s/%s\n", file.Offset, file.Size, file.Expand_Size, file.Path, file.Name)
 	}
 
 	return nil
